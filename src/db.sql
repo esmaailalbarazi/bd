@@ -3,7 +3,7 @@ CREATE TABLE utilizador (
 	username	 VARCHAR(32) UNIQUE NOT NULL,
 	password	 VARCHAR(128) NOT NULL,
 	email	 VARCHAR(64) UNIQUE NOT NULL,
-	authtoken	VARCHAR(128) UNIQUE
+	authtoken	 VARCHAR(128) UNIQUE,
 	PRIMARY KEY(idutilizador)
 );
 
@@ -21,7 +21,7 @@ CREATE TABLE leilao (
 	idleilao			 SERIAL,
 	titulo				 VARCHAR(64) NOT NULL,
 	descricao			 TEXT NOT NULL,
-	datalimite			 DATE NOT NULL,
+	datalimite			 TIMESTAMP NOT NULL,
 	precominimo			 FLOAT(8) NOT NULL,
 	precoatual			 FLOAT(8) NOT NULL,
 	vendedor_utilizador_idutilizador BIGINT NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE artigo (
 CREATE TABLE licitacao (
 	idlicitacao			 SERIAL,
 	valor				 FLOAT(8),
-	data				 DATE NOT NULL,
+	data				 TIMESTAMP NOT NULL,
 	milisegundos			 INTEGER,
 	comprador_utilizador_idutilizador BIGINT NOT NULL,
 	leilao_idleilao			 BIGINT NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE mensagem (
 
 CREATE TABLE notificacao (
 	texto			 TEXT,
-	data			 DATE NOT NULL,
+	data			 TIMESTAMP NOT NULL,
 	utilizador_idutilizador BIGINT,
 	PRIMARY KEY(utilizador_idutilizador)
 );
@@ -98,5 +98,4 @@ ALTER TABLE notificacaolicitacao ADD CONSTRAINT notificacaolicitacao_fk1 FOREIGN
 ALTER TABLE notificacaolicitacao ADD CONSTRAINT notificacaolicitacao_fk2 FOREIGN KEY (notificacao_utilizador_idutilizador) REFERENCES notificacao(utilizador_idutilizador);
 ALTER TABLE notificacaomensagem ADD CONSTRAINT notificacaomensagem_fk1 FOREIGN KEY (mensagem_idmensagem) REFERENCES mensagem(idmensagem);
 ALTER TABLE notificacaomensagem ADD CONSTRAINT notificacaomensagem_fk2 FOREIGN KEY (notificacao_utilizador_idutilizador) REFERENCES notificacao(utilizador_idutilizador);
-
 
