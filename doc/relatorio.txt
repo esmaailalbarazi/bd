@@ -1,0 +1,19 @@
+mudanças da 1a meta:
+Primary keys -> uso do tipo SERIAL para autoincremento pelo postgresql, deixando as tabelas intermedias com bigint na mesma
+criamos os 2 tipos de notif
+criamos um campo milisegundos
+alargamos o campo password de utilizadores por causa da hash longa (+/- 80 chars em vez de 64)
+removemos entidades fracas de licitações ou mensagens, visto que as mensagens devem ser identificadas por elas próprias, não pelo leilão ou pelo utilizador (o mesmo utilizador pode ter várias mensagens no mesmo leilão
+alteramos os campos de Date para Timestamp (para incluir data + hora)
+
+desenvolvimento:
+API REST -> uso da framework flask do python, para responder aos requests tal tal tal, jsonify para transformar as listas (ou dicts) em python para json, formato pedido no enunciado para o output
+DEFAULT VALUES -> para definir valores em tabelas como 'artigo' em que existe apenas um campo SERIAL a ser definido automaticamente e, por isso, não há nenhum valor arbitrário a ser escolhido.
+
+todo:
+codigo de erros de requests http ou da base de dados, não sei o que prof quer aí
+usar o psycopg2.error para obter os codigos de erros da bd!
+tirar autocommit da bd
+logger -> usado para ter um log de todos os requests feitos
+
+leilão: acrescentamos ao json recebido {'authToken': authToken, 'dataLimite': datalimite}
