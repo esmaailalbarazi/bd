@@ -12,7 +12,7 @@ import psycopg2, random
 app = Flask(__name__)
 
 
-## Conexão à base de dados e devolve a ligação
+## Conexão à base de dados, devolve a ligação a ser usada
 def db_connection():
     db = psycopg2.connect(user = "postgres", password ="postgres",
             host="127.0.0.1", port="5432", database="dbproj")
@@ -96,10 +96,14 @@ def user_login():
 
     #Se o utilizador existe ou a palavra-passe está errada
     if not row:
-        print("[DB] Utilizador inexistente")
+        print("[Erro] Utilizador inexistente")
+        if db is not None:
+            db.close()
         return jsonify({'erro': "AuthError"} ) #A DEFINIR
     elif not sha256_crypt.verify(payload["password"], row[0]):
-        print("[DB] Palavra-passe incorreta.")
+        print("[Erro] Palavra-passe incorreta.")
+        if db is not None:
+            db.close()
         return jsonify({'erro': "AuthError"}) #A DEFINIR
 
     #Gera um novo authtoken
@@ -114,10 +118,9 @@ def user_login():
     except (Exception, psycopg2.DatabaseError) as error:
         print("[DB] Erro a autenticar utilizador.")
         output = {'erro': 500} #A DEFINIR
-    finally:
-        if db is not None:
-            db.close()
 
+    if db is not None:
+        db.close()
     return jsonify(output)
 
 
@@ -178,7 +181,7 @@ def new_leilao():
             vendedor_utilizador_idutilizador, artigo_idartigo)
             VALUES (%s, %s, %s, %s, %s, %s, %s);"""
         cur.execute(statement, values)
-        cur.execute("cdevolve o idommit")
+        cur.execute("commit")
         print("[DB] Leilão %s criado com sucesso." % payload["titulo"])
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
@@ -242,6 +245,98 @@ def search_leiloes(keyword):
     output = []
     for row in rows:
         output.append({"leilaoId": row[0], "descricao": row[1]})
+
+    if db is not None:
+        db.close()
+    return jsonify(output)
+
+
+## GET /dbproj/leilao/<leilaoId> - Consultar o leilão com o id recebido
+@app.route("/dbproj/leilao/<leilaoId>", methods=["GET"])
+def get_leilao(leilaoId):
+    db = db_connection()
+    cur = db.cursor()
+
+    #Devolve os dados da tabela de leilões
+    values = (leilaoId,)
+    statement = "SELECT * FROM leilao WHERE idleilao=%s"
+    cur.execute(statement,values)
+    row = cur.fetchone()
+    if not row:
+        print("[DB] Nenhum leilão existente com o id recebido.")
+        if db is not None:
+            db.close()
+        return jsonify({})
+    output = {"leilaoId": row[0], "titulo": row[1], "descricao": row[2],
+        "dataLimite": row[3], "precoMinimo": row[4], "precoAtual": row[5]}
+    vendedorId = row[6]
+    artigoId = row[7]
+
+    #Devolve o username do vendedor_utilizador_idutilizador
+    values = (vendedorId,)
+    statement = "SELECT username FROM utilizador WHERE idutilizador=%s"
+    cur.execute(statement,values)
+    row = cur.fetchone()
+    output["vendedor"] = row[0]
+
+    #Devolve o código do artigo a ser vendido
+    values = (artigoId, artigoId, )
+    statement = """SELECT codigo FROM artigoean WHERE artigo_idartigo=%s
+        UNION SELECT codigo FROM artigoisbn WHERE artigo_idartigo=%s
+        LIMIT 1"""
+    cur.execute(statement,values)
+    row = cur.fetchone()
+    output["artigo"] = row[0]
+
+    #Devolve as mensagens escritas nesse leilão (mural)
+    mensagens = []
+    values = (leilaoId,)
+    statement = """SELECT utilizador_idutilizador, conteudo FROM mensagem
+        WHERE leilao_idleilao=%s"""
+    cur.execute(statement, values)
+    rows = cur.fetchall()
+    for row in rows:
+        mensagens.append({"utilizadorId": row[0], "mensagem": row[1]})
+    output["mural"] = mensagens
+
+    #Devolve as licitações nesse leilão
+    licitacoes = []
+    statement = """SELECT data, comprador_utilizador_idutilizador, valor
+        FROM licitacao WHERE leilao_idleilao=%s
+        ORDER BY data,milisegundos DESC"""
+    cur.execute(statement, values)
+    rows = cur.fetchall()
+    for row in rows:
+        licitacoes.append({"data": row[0], "compradorId": row[1],
+        "valor": row[2] + "€"})
+    output["licitacoes"] = licitacoes
+
+    if db is not None:
+        db.close()
+    return jsonify(output)
+
+
+## GET /dbproj/atividade/<userId>"- Consultar a atividade em leilões de um
+## utilizador, tanto como vendedor como comprador
+@app.route("/dbproj/atividade/<userId>", methods=["GET"])
+def get_atividade(userId):
+    db = db_connection()
+    cur = db.cursor()
+
+    #Obtem a lista de leilões em que é o vendedor
+    output = []
+    values = (userId,userId,)
+    statement = """SELECT idleilao, descricao FROM leilao
+        WHERE vendedor_utilizador_idutilizador=%s
+        UNION
+        SELECT idleilao, descricao FROM leilao WHERE idleilao IN (
+    	   SELECT leilao_idleilao FROM licitacao
+           WHERE comprador_utilizador_idutilizador=%s
+        )"""
+    cur.execute(statement,values)
+    rows = cur.fetchall()
+    for row in rows:
+        output.append({"idLeilao": row[0], "descricao": row[1]})
 
     if db is not None:
         db.close()

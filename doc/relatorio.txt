@@ -1,13 +1,16 @@
 mudanças da 1a meta:
 Primary keys -> uso do tipo SERIAL para autoincremento pelo postgresql, deixando as tabelas intermedias com bigint na mesma
-criamos os 2 tipos de notif
+criamos os 2 tipos de notif, para ficar sempre uma licitação OU uma mensagem associada à notif
 criamos um campo milisegundos
 alargamos o campo password de utilizadores por causa da hash longa (+/- 80 chars em vez de 64)
 removemos entidades fracas de licitações ou mensagens, visto que as mensagens devem ser identificadas por elas próprias, não pelo leilão ou pelo utilizador (o mesmo utilizador pode ter várias mensagens no mesmo leilão
 alteramos os campos de Date para Timestamp (para incluir data + hora)
 
 desenvolvimento:
+REGISTOS INICIAIS -> inseridos com o sql ao gerir a bd inicial (por fazer)
+QUERIES SQL -> foram testadas na query tool do pgadmin previamente
 API REST -> uso da framework flask do python, para responder aos requests tal tal tal, jsonify para transformar as listas (ou dicts) em python para json, formato pedido no enunciado para o output
+REQUESTS -> enviados por curl, mostrar os comandos etc...
 DEFAULT VALUES -> para definir valores em tabelas como 'artigo' em que existe apenas um campo SERIAL a ser definido automaticamente e, por isso, não há nenhum valor arbitrário a ser escolhido.
 
 todo:
@@ -15,5 +18,23 @@ codigo de erros de requests http ou da base de dados, não sei o que prof quer a
 usar o psycopg2.error para obter os codigos de erros da bd!
 tirar autocommit da bd
 logger -> usado para ter um log de todos os requests feitos
+checks no SQL para limitar o ISBN a > 10, licitações novas > preço atual..
 
-leilão: acrescentamos ao json recebido {'authToken': authToken, 'dataLimite': datalimite}
+ações:
+	adicionar leilão:
+	- acrescentamos ao json recebido {'authToken': authToken, 'dataLimite': datalimite}
+	- verificamos se o artigo existe
+	- verificamos se o utilizador está autenticado e se é vendedor (caso não seja adicionamo-lo à tabela de vendedores)
+	- inserimos na tabela de leilao um novo registo com os dados pedidos
+
+	consultar detalhes de um leilao:
+	- acrescentamos ao json enviado {'vendedor': username, 'artigo': codigo, "mural": mensagem, }
+	- procurar os dados relativos ao leilão na própria tabela (leilao)
+	- procurar o username do vendedor_utilizador_idutilizador
+	- procurar o codigo do artigo
+
+	listar leilões de um utilizador:
+	- definir /dbproj/atividade/<userId> como endpoint
+	- procurar o id do utilizador nas licitações, e devolver os ids do leilões de forma distinta
+	- procurar o id do utilizador nos leilões como vendedor e unir de forma distinta com os resultados de licitações
+	- devolve um array de objetos [{"idLeilao": "id", "descricao": "conteudo"}, ...]
