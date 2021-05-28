@@ -2,12 +2,15 @@
 ## - Jason Wrisez
 ## - Esmaail Albarazi
 
+
 from flask import Flask, jsonify, request
 from passlib.hash import sha256_crypt
 import psycopg2, random
 
+
 ## Criação do web server
 app = Flask(__name__)
+
 
 ## Conexão à base de dados e devolve a ligação
 def db_connection():
@@ -15,7 +18,9 @@ def db_connection():
             host="127.0.0.1", port="5432", database="dbproj")
     return db
 
-## Verifica a autenticação de um utilizador e devolve o seu id
+
+## Verifica a autenticação de um utilizador e devolve o id
+## do utilizador correspondente
 def check_authtoken(token):
     db = db_connection()
     cur = db.cursor()
@@ -28,11 +33,13 @@ def check_authtoken(token):
     row = cur.fetchone()
     return row[0]
 
+
 ## / e /dbproj/ - Mostra apenas uma mensagem
 @app.route('/')
 @app.route('/dbproj/')
 def hello():
     return "Bem-vindo ao sistema de leilões online!"
+
 
 ## POST /dbproj/user/ - Regista um utilizador novo
 @app.route("/dbproj/user", methods=["POST"])
@@ -53,7 +60,7 @@ def user_register():
         print("[DB] Utilizador " + payload["username"] + " inserido.")
 
     except (Exception, psycopg2.DatabaseError) as error:
-        print("[Erro] A inserir utilizador " + payload["username"] + ".")
+        print("[Erro] A inserir utilizador %s."%payload["username"])
         output = {'erro': 500} #A DEFINIR
         return jsonify(output)
 
@@ -71,6 +78,7 @@ def user_register():
     if db is not None:
         db.close()
     return jsonify(output)
+
 
 ## PUT /dbproj/user/ - Login de um utilizador existente
 @app.route("/dbproj/user", methods=["PUT"])
@@ -112,6 +120,7 @@ def user_login():
 
     return jsonify(output)
 
+
 ## POST /dbproj/leilao - Criação de leilão
 @app.route("/dbproj/leilao", methods=["POST"])
 def new_leilao():
@@ -140,40 +149,40 @@ def new_leilao():
 
     #Verifica se o utilizador já é vendedor
     values = (payload["artigoId"],)
-    statement = """SELECT 1 FROM vendedor
-    utilizador_idutilizador=%s"""
+    statement = """SELECT utilizador_idutilizador FROM vendedor
+    WHERE utilizador_idutilizador=%s"""
     cur.execute(statement, values)
-    row =cur.fetchone()
+    row = cur.fetchone()
 
+    #Insere o utilizador na tabela vendedor, se não existir
     if not row:
-        #Insere o utilizador na tabela vendedor
         try:
             values = (userId,)
-            statement= "INSERT INTO vendedor(utilizador_idutilizador) VALUES (%s)"
+            statement= """INSERT INTO vendedor(utilizador_idutilizador)
+            VALUES (%s)"""
             cur.execute(statement, values)
             cur.execute("commit")
-            print("[DB] Novo vendedor %sregistado com sucesso."
-                %payload["titulo"])
+            print("[DB] Novo vendedor (id: %s) registado com sucesso." % userId)
         except (Exception, psycopg2.DatabaseError) as error:
-            print("[Erro] Impossível definir utilizador %s como vendedor."
-                %payload["titulo"])
+            print("[Erro] Impossível definir utilizador (id: %s) como vendedor."
+                % userId)
             output = {'erro': 500} #A DEFINIR
 
     #Cria o registo na tabela leilao
     try:
         values = (payload["titulo"], payload["descricao"],
             payload["dataLimite"], payload["precoMinimo"],
-            payload["precoMinimo"], row[0], payload["artigoId"],)
+            payload["precoMinimo"], userId, payload["artigoId"],)
         statement = """INSERT INTO leilao (titulo, descricao,
             datalimite, precominimo, precoatual,
             vendedor_utilizador_idutilizador, artigo_idartigo)
-            VALUES (%s, %s, %s, %s, %s, %s);"""
+            VALUES (%s, %s, %s, %s, %s, %s, %s);"""
         cur.execute(statement, values)
         cur.execute("commit")
-        print("[DB] Leilão %s criado com sucesso.", payload["titulo"])
-
+        print("[DB] Leilão %s criado com sucesso." % payload["titulo"])
     except (Exception, psycopg2.DatabaseError) as error:
-        print("[Erro] A inserir leilão %s." %payload["titulo"])
+        print(error)
+        print("[Erro] A inserir leilão %s." % payload["titulo"])
         output = {'erro': 500} #A DEFINIR
         if db is not None:
             db.close()
