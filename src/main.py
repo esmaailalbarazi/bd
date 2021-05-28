@@ -178,7 +178,7 @@ def new_leilao():
             vendedor_utilizador_idutilizador, artigo_idartigo)
             VALUES (%s, %s, %s, %s, %s, %s, %s);"""
         cur.execute(statement, values)
-        cur.execute("commit")
+        cur.execute("cdevolve o idommit")
         print("[DB] Leilão %s criado com sucesso." % payload["titulo"])
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
@@ -202,6 +202,51 @@ def new_leilao():
     if db is not None:
         db.close()
     return jsonify(output)
+
+
+## GET /dbproj/leiloes - Listar todos os leilões no sistema
+@app.route("/dbproj/leiloes", methods=["GET"])
+def list_leiloes():
+    db = db_connection()
+    cur = db.cursor()
+    cur.execute("SELECT idleilao, descricao FROM leilao;")
+    rows = cur.fetchall()
+    output = []
+    for row in rows:
+        output.append({"leilaoId": row[0], "descricao": row[1]})
+
+    if db is not None:
+        db.close()
+    return jsonify(output)
+
+
+## GET /dbproj/leiloes/<keyword> - Listar leilões no sistema, pesquisando
+## a keyword nos códigos dos artigos e na descrição dos leilões
+@app.route("/dbproj/leiloes/<keyword>", methods=["GET"])
+def search_leiloes(keyword):
+    db = db_connection()
+    cur = db.cursor()
+
+    #O % serve para encontrar caracteres antes e depois da keyword
+    keyword = '%' + keyword + '%'
+    #Pesquisa de keywords nos códigos dos artigos e nas descrições dos leilões
+    statement = """SELECT idleilao, descricao FROM leilao
+        WHERE descricao LIKE %s OR artigo_idartigo IN (
+	       SELECT artigo_idartigo FROM artigoean WHERE codigo LIKE %s
+	       UNION
+	       SELECT artigo_idartigo FROM artigoisbn WHERE codigo LIKE %s
+        )"""
+    values = (str(keyword), str(keyword), str(keyword),)
+    cur.execute(statement, values)
+    rows = cur.fetchall()
+    output = []
+    for row in rows:
+        output.append({"leilaoId": row[0], "descricao": row[1]})
+
+    if db is not None:
+        db.close()
+    return jsonify(output)
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port="8080", debug=True, threaded=True)
