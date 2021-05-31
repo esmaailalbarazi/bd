@@ -266,7 +266,7 @@ def get_leilao(leilaoId):
         print("[DB] Nenhum leilão existente com o id recebido.")
         if db is not None:
             db.close()
-        return jsonify({})
+        return jsonify({"erro": 500}) #a definir
     output = {"leilaoId": row[0], "titulo": row[1], "descricao": row[2],
         "dataLimite": row[3], "precoMinimo": row[4], "precoAtual": row[5],
         "terminou": row[6]}
@@ -441,7 +441,7 @@ def create_licitacao(leilaoId):
 
     if db is not None:
         db.close()
-    return jsonify({})
+    return jsonify({"licitacaoId": licitacaoId})
 
 
 ## PUT /dbproj/leilao/<leilaoId> - Editar um leilão existente, guardando as
@@ -455,6 +455,7 @@ def edit_leilao(leilaoId):
     #Copiar o leilão atual e termina-o
     try:
         cur.execute("begin transaction")
+
         values = (leilaoId,)
         statement = """INSERT into leilao (titulo, descricao, datalimite,
             precominimo, precoatual, vendedor_utilizador_idutilizador,
@@ -630,7 +631,81 @@ def create_mensagem(leilaoId):
     return jsonify({"mensagemId": mensagemId})
 
 
+## GET /dbproj/atividade/<userId>"- Consultar a atividade em leilões de um
+## utilizador, tanto como vendedor como comprador
+@app.route("/dbproj/notificacoes", methods=["GET"])
+def list_notificacoes():
 
+    payload = request.get_json()
+    #Verifica se o utilizador está autenticado
+    userId = check_authtoken(payload["authToken"])
+    if not userId:
+        print("[DB] O utilizador não está autenticado.")
+        return jsonify({"erro": 500}) #A DEFINIR
+
+    db = db_connection()
+    cur = db.cursor()
+
+    #Procura as notificações de licitações
+    statement = """SELECT * FROM notificacaolicitacao
+        WHERE utilizador_idutilizador=%s ORDER BY data DESC"""
+    values = (userId,)
+    cur.execute(statement, values)
+    rows = cur.fetchall()
+    notifLic = []
+    for row in rows:
+        statement = """SELECT valor, data FROM licitacao
+            WHERE idlicitacao=%s"""
+        values = (row[2],)
+        cur.execute(statement, values)
+        licitacao = cur.fetchone()
+        notifLic.append({"tipo": "licitacao", "info": row[0], "data": row[1],
+            "conteudo":{"valor": licitacao[0], "dataLicitacao": licitacao[1]}})
+
+    #Procura as notificações de mensagens
+    statement = """SELECT * FROM notificacaomensagem
+        WHERE utilizador_idutilizador=%s ORDER BY data DESC"""
+    values = (userId,)
+    cur.execute(statement, values)
+    rows = cur.fetchall()
+    notifMsg = []
+    for row in rows:
+        statement = """SELECT conteudo, data FROM mensagem
+            WHERE idmensagem=%s"""
+        values = (row[2],)
+        cur.execute(statement, values)
+        mensagem = cur.fetchone()
+        notifMsg.append({"data": row[1], "info": row[0],
+            "conteudo":{"conteudo": mensagem[0], "dataMensagem": mensagem[1]}})
+
+    output = {"licitacoes": notifLic, "mensagens": notifMsg}
+    if db is not None:
+        db.close()
+    return jsonify(output)
+
+
+## PUT /dbproj/leilao/<leilaoId>/end"- Termina um leilão naquele momento
+@app.route("/dbproj/leilao/<leilaoId>/end", methods=["PUT"])
+def end_leilao(leilaoId):
+
+    db = db_connection()
+    cur = db.cursor()
+    output = {}
+    #Seleciona o bool "terminou" para atualizar, bloqueando a linha
+    try:
+        statement = "UPDATE leilao SET terminou='true' WHERE idleilao=%s"
+        values = (leilaoId,)
+        cur.execute(statement, values)
+        cur.execute("commit")
+        output = {"leilaoId": leilaoId}
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+        print("[Erro] Impossível terminar o leilão referido.")
+        output = {"erro": 222}
+    finally:
+        if db is not None:
+            db.close()
+    return jsonify(output)
 
 
 if __name__ == "__main__":

@@ -59,3 +59,8 @@ ações:
 	- mudou-se o endpoint e req para POST "/dbproj/leilao/<leilaoId>"
 	- json a receber: {'authToken': authToken, 'valor': valor}
 	- json de resposta: {"licitacaoId": licitacao}
+
+	ver notificações:
+	- endpoint /dbproj/notificacoes
+	- recebe o authToken
+	- devolve um array com os todas as notificações e os seus conteudos
