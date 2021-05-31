@@ -39,7 +39,6 @@ CREATE TABLE licitacao (
 	idlicitacao			 SERIAL,
 	valor				 FLOAT(8),
 	data				 TIMESTAMP NOT NULL,
-	milisegundos			 INTEGER,
 	comprador_utilizador_idutilizador BIGINT NOT NULL,
 	leilao_idleilao			 BIGINT NOT NULL,
 	PRIMARY KEY(idlicitacao)

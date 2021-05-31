@@ -54,3 +54,8 @@ ações:
 	escrever mensagem:
 	-endpoint - POST /dbproj/leilao/<leilaoId>/mensagem
 	-json - {"authToken": "authtoken", "mensagem": "conteudo"}
+
+	licitar:
+	- mudou-se o endpoint e req para POST "/dbproj/leilao/<leilaoId>"
+	- json a receber: {'authToken': authToken, 'valor': valor}
+	- json de resposta: {"licitacaoId": licitacao}
