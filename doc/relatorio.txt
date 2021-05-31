@@ -3,7 +3,7 @@ Primary keys -> uso do tipo SERIAL para autoincremento pelo postgresql, deixando
 criamos os 2 tipos de notif, para ficar sempre uma licitação OU uma mensagem associada à notif
 criamos um campo milisegundos -> não é preciso porque o timestamp tem
 alargamos o campo password de utilizadores por causa da hash longa (+/- 80 chars em vez de 64)
-removemos entidades fracas de licitações ou mensagens, visto que as mensagens devem ser identificadas por elas próprias, não pelo leilão ou pelo utilizador (o mesmo utilizador pode ter várias mensagens no mesmo leilão
+removemos entidades fracas de licitações, visto que as mensagens devem ser identificadas por elas próprias, não pelo leilão ou pelo utilizador (o mesmo utilizador pode ter várias mensagens no mesmo leilão
 alteramos os campos de Date para Timestamp (para incluir data + hora)
 adicionamos um booleano para indicar se o leilão terminou (para o metodo pedido e no caso de editar leilões)
 

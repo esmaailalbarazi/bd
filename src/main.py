@@ -49,28 +49,28 @@ def user_register():
     cur = db.cursor()
     output = {}
 
+    #Insere o novo utilizador com encriptação da palavra-passe
     try:
-        #Inserir o novo utilizador
         payload["password"] = sha256_crypt.hash(payload["password"])
         values = (payload["username"], payload["password"], payload["email"])
         statement = """INSERT INTO utilizador (username, password, email)
             VALUES (%s, %s, %s);"""
         cur.execute(statement, values)
         cur.execute("commit")
-        print("[DB] Utilizador " + payload["username"] + " inserido.")
-
+        print("[DB] Utilizador " + payload["username"] + " registado.")
     except (Exception, psycopg2.DatabaseError) as error:
-        print("[Erro] A inserir utilizador %s."%payload["username"])
+        print(error)
+        print("[Erro] A registar utilizador %s."%payload["username"])
         output = {'erro': 500} #A DEFINIR
         return jsonify(output)
 
-    #Devolve o id do novo utilizador
+    #Seleciona o id do novo utilizador, gerado pelo postgreSQL
     statement = """SELECT idutilizador FROM utilizador
         WHERE username = %s;"""
     cur.execute(statement, (payload["username"],))
     row = cur.fetchone()
     if not row:
-        print("[Erro] Utilizador inserido mas impossível de encontrar.")
+        print("[Erro] Utilizador registado mas impossível de encontrar.")
         output = {'erro': 500} #A DEFINIR
     else:
         output = {'userId': row[0]}
@@ -88,13 +88,13 @@ def user_login():
     cur = db.cursor()
     output = {}
 
-    #Procura o utilizador
+    #Seleciona o utilizador
     statement = """SELECT password FROM utilizador
         WHERE username = %s;"""
     cur.execute(statement, (payload["username"],))
     row = cur.fetchone()
 
-    #Se o utilizador existe ou a palavra-passe está errada
+    #Retorna erro se o utilizador não existir ou se a palavra-passe for errada
     if not row:
         print("[Erro] Utilizador inexistente")
         if db is not None:
@@ -106,7 +106,7 @@ def user_login():
             db.close()
         return jsonify({'erro': "AuthError"}) #A DEFINIR
 
-    #Gera um novo authtoken
+    #Gera um novo token de autenticação
     try:
         token = str(random.randrange(999999))
         #values = (sha256_crypt.hash(token), payload["username"],)
@@ -116,6 +116,7 @@ def user_login():
         cur.execute("commit")
         output = {'authToken': token}
     except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
         print("[DB] Erro a autenticar utilizador.")
         output = {'erro': 500} #A DEFINIR
 
@@ -131,7 +132,7 @@ def new_leilao():
     db = db_connection()
     cur = db.cursor()
 
-    #Se o utilizador não estiver autenticado
+    #Retorna erro se o utilizador não estiver autenticado
     userId = check_authtoken(payload["authToken"])
     if userId is None:
         print("[DB] O utilizador não está autenticado.")
@@ -139,7 +140,7 @@ def new_leilao():
             db.close()
         return jsonify({'erro': 500}) #A DEFINIR
 
-    #Verifica se o artigo existe
+    #Retorna erro se o artigo a por em venda não existe
     values = (payload["artigoId"],)
     statement = "SELECT 1 FROM artigo WHERE idartigo=%s"
     cur.execute(statement, values)
@@ -167,6 +168,7 @@ def new_leilao():
             cur.execute("commit")
             print("[DB] Novo vendedor (id: %s) registado com sucesso." % userId)
         except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
             print("[Erro] Impossível definir utilizador (id: %s) como vendedor."
                 % userId)
             output = {'erro': 500} #A DEFINIR
@@ -191,7 +193,7 @@ def new_leilao():
             db.close()
         return jsonify(output)
 
-    #Devolve o id do novo leilão
+    #Seleciona o ID do novo leilão, gerado pelo postgreSQL
     statement = """SELECT idleilao FROM leilao
         WHERE titulo = %s;"""
     cur.execute(statement, (payload["titulo"],))
@@ -212,6 +214,7 @@ def new_leilao():
 def list_leiloes():
     db = db_connection()
     cur = db.cursor()
+
     cur.execute("SELECT idleilao, descricao FROM leilao;")
     rows = cur.fetchall()
     output = []
@@ -232,14 +235,14 @@ def search_leiloes(keyword):
 
     #O % serve para encontrar caracteres antes e depois da keyword
     keyword = '%' + keyword + '%'
-    #Pesquisa de keywords nos códigos dos artigos e nas descrições dos leilões
+    #Seleciona os leilões com a keyword na descrição ou nos códigos
     statement = """SELECT idleilao, descricao FROM leilao
         WHERE descricao LIKE %s OR artigo_idartigo IN (
 	       SELECT artigo_idartigo FROM artigoean WHERE codigo LIKE %s
 	       UNION
 	       SELECT artigo_idartigo FROM artigoisbn WHERE codigo LIKE %s
         )"""
-    values = (str(keyword), str(keyword), str(keyword),)
+    values = (keyword, keyword, keyword,)
     cur.execute(statement, values)
     rows = cur.fetchall()
     output = []
@@ -251,7 +254,8 @@ def search_leiloes(keyword):
     return jsonify(output)
 
 
-## GET /dbproj/leilao/<leilaoId> - Consultar o leilão com o id recebido
+## GET /dbproj/leilao/<leilaoId> - Devolve todos os detalhes do leilão
+## com o ID recebido
 @app.route("/dbproj/leilao/<leilaoId>", methods=["GET"])
 def get_leilao(leilaoId):
     db = db_connection()
@@ -273,7 +277,7 @@ def get_leilao(leilaoId):
     vendedorId = row[7]
     artigoId = row[8]
 
-    #Devolve o username do vendedor_utilizador_idutilizador
+    #Devolve o username do vendedor
     values = (vendedorId,)
     statement = "SELECT username FROM utilizador WHERE idutilizador=%s"
     cur.execute(statement,values)
@@ -395,6 +399,7 @@ def create_licitacao(leilaoId):
             cur.execute(statement, values)
             print("[DB] Novo comprador (id: %s) registado com sucesso." % userId)
         except (Exception, psycopg2.DatabaseError) as error:
+            print(error)
             print("[Erro] Impossível definir utilizador (id: %s) como comprador."
                 % userId)
             if db is not None:
@@ -413,6 +418,7 @@ def create_licitacao(leilaoId):
         cur.execute(statement, values)
         print("[DB] Licitação registada com sucesso.")
     except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
         print("[Erro] Impossível criar licitação.")
         if db is not None:
             db.close()
@@ -455,7 +461,6 @@ def edit_leilao(leilaoId):
     #Copiar o leilão atual e termina-o
     try:
         cur.execute("begin transaction")
-
         values = (leilaoId,)
         statement = """INSERT into leilao (titulo, descricao, datalimite,
             precominimo, precoatual, vendedor_utilizador_idutilizador,
@@ -503,21 +508,22 @@ def edit_leilao(leilaoId):
     statement = "UPDATE leilao SET "
     values = ()
     if "titulo" in payload:
-        statement += "titulo = %s"
+        statement += "titulo = %s,"
         values += (payload["titulo"],)
     if "descricao" in payload:
-        statement += "descricao = %s"
+        statement += "descricao = %s,"
         values += (payload["descricao"],)
     if "dataLimite" in payload:
-        statement += "datalimite = %s"
+        statement += "datalimite = %s,"
         values += (payload["dataLimite"],)
     if "precoMinimo" in payload:
-        statement += "precominimo = %s"
+        statement += "precominimo = %s,"
         values += (payload["precoMinimo"],)
     if "artigoId" in payload:
-        statement += "artigo_idartigo = %s"
+        statement += "artigo_idartigo = %s,"
         values += (payload["artigoId"],)
-    statement += "WHERE idleilao=%s"
+    statement = statement[:-1]
+    statement += " WHERE idleilao=%s"
     values += (novoLeilaoId,)
     try:
         cur.execute(statement, values)
@@ -541,8 +547,8 @@ def edit_leilao(leilaoId):
     return jsonify(output)
 
 
-## POST /dbproj/leilao - Cria uma mensagem associada a um leilão
-## e notifica o vendedor e toda a gente que já mandou mensagens
+## POST /dbproj/leilao/<leilaoId>/mensagem - Cria uma mensagem associada a um
+## leilão e notifica o vendedor e toda a gente que já mandou mensagens
 @app.route("/dbproj/leilao/<leilaoId>/mensagem", methods=["POST"])
 def create_mensagem(leilaoId):
 
@@ -609,7 +615,7 @@ def create_mensagem(leilaoId):
     leilao = row[0] + " - " + row[1]
 
     #Notifica os participantes
-    if vendedorId not in participantes: #CORRIGIR
+    if vendedorId not in participantes:
         participantes.append(vendedorId)
     notificacao = "O utilizador " + username + \
         " escreveu uma mensagem no leilão " + leilao + "."
@@ -624,6 +630,7 @@ def create_mensagem(leilaoId):
         print("[DB] Os utilizadores participantes foram notificados \
         com sucesso.")
     except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
         print("[Erro] A notificar utilizadores da nova mensagem.")
 
     if db is not None:
@@ -631,8 +638,8 @@ def create_mensagem(leilaoId):
     return jsonify({"mensagemId": mensagemId})
 
 
-## GET /dbproj/atividade/<userId>"- Consultar a atividade em leilões de um
-## utilizador, tanto como vendedor como comprador
+## GET /dbproj/notificacoes"- Devolve as notificações pertencentes ao utilizador
+## logado, recebendo o seu token
 @app.route("/dbproj/notificacoes", methods=["GET"])
 def list_notificacoes():
 
@@ -684,7 +691,8 @@ def list_notificacoes():
     return jsonify(output)
 
 
-## PUT /dbproj/leilao/<leilaoId>/end"- Termina um leilão naquele momento
+## PUT /dbproj/leilao/<leilaoId>/end"- Termina um leilão no momento,
+## independentemente da hora
 @app.route("/dbproj/leilao/<leilaoId>/end", methods=["PUT"])
 def end_leilao(leilaoId):
 
@@ -708,5 +716,6 @@ def end_leilao(leilaoId):
     return jsonify(output)
 
 
+## Main
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port="8080", debug=True, threaded=True)

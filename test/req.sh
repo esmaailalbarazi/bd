@@ -1,11 +1,10 @@
-if [[ $# -lt 3 ]]; then
-	echo "Sintaxe: sh req.sh <tipo de request> <ficheiro json> <endpoint>"
-
-
-	REQ=$1
-	FILE="@$2"
-	LINK="http://127.0.0.1:8080/dbproj/$3"
-
-	curl -vX ${REQ} ${LINK} -d ${FILE} \
-	--header "Content-Type: application/json"
-fi
+echo 'Carregar enter para realizar as seguintes ações:'
+read -p 'Registar utlizador "João"'
+curl -X POST 127.0.0.1:8080/dbproj/user -d @registo1.json --header "Content-Type: application/json"
+read -p 'Registar utlizador "Pedro"'
+curl -X POST 127.0.0.1:8080/dbproj/user -d @registo1.json --header "Content-Type: application/json"
+read -p 'Autenticar utlizador "João"'
+curl -X PUT 127.0.0.1:8080/dbproj/user -d @login1.json --header "Content-Type: application/json"
+read -p 'Autenticar utlizador "João"'
+curl -X PUT 127.0.0.1:8080/dbproj/user -d @login2.json --header "Content-Type: application/json"
+read -p 'Criar leilão Frigorifico usado'

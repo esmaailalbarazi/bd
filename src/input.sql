@@ -22,16 +22,16 @@ INSERT INTO vendedor (utilizador_idutilizador) VALUES ('2');
 INSERT INTO leilao (idleilao, titulo, descricao, datalimite, precominimo, precoatual,
     vendedor_utilizador_idutilizador, artigo_idartigo, terminou)
 VALUES ('1', 'Leilão 1', 'Leilão de teste 1', '2021-12-31 20:00', '10', '40', '1', '1', 'false'),
-('1', 'Leilão 2', 'Leilão de teste 2', '2021-12-31 20:00', '20', '20', '2', '2', 'false');
+('2', 'Leilão 2', 'Leilão de teste 2', '2021-12-31 20:00', '20', '20', '2', '2', 'false');
 
 --Inserir mensagens no leilão '1'
 INSERT INTO mensagem (idmensagem, conteudo, data, utilizador_idutilizador, leilao_idleilao)
-VALUES ('1', 'Mensagem de teste 1', '2021-05-30 10:00', '1', '1');
-VALUES ('2', 'Mensagem de teste 2', '2021-05-30 12:00', '2', '1');
+VALUES ('1', 'Mensagem de teste 1', '2021-05-30 10:00', '1', '1'),
+('2', 'Mensagem de teste 2', '2021-05-30 12:00', '2', '1');
 
 --Inserir licitações no leilão '1'
 INSERT INTO comprador (utilizador_idutilizador) VALUES ('2');
 INSERT INTO comprador (utilizador_idutilizador) VALUES ('3');
 INSERT INTO licitacao (idlicitacao, valor, data, comprador_utilizador_idutilizador, leilao_idleilao)
 VALUES ('1', '20', '2021-05-30 15:00', '2', '1'),
-VALUES ('1', '40', '2021-05-30 20:00', '2', '1');
+('2', '40', '2021-05-30 20:00', '2', '1');
