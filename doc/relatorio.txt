@@ -64,3 +64,9 @@ ações:
 	- endpoint /dbproj/notificacoes
 	- recebe o authToken
 	- devolve um array com os todas as notificações e os seus conteudos
+
+
+
+
+
+https://docs.google.com/document/d/122Yp8-osVtdNXSHZuYtuW89nO8lcXyItrt5o6jgI7kY/edit?usp=sharing
