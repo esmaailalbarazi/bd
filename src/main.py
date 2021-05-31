@@ -457,6 +457,21 @@ def edit_leilao(leilaoId):
     payload = request.get_json()
     db = db_connection()
     cur = db.cursor()
+    #Verifica se o utilizador está autenticado
+    userId = check_authtoken(payload["authToken"])
+    if not userId:
+        print("[DB] O utilizador não está autenticado.")
+        return jsonify({"erro": 500}) #A DEFINIR
+
+    #Verifica se o utilizador é o vendedor do leilão
+    statement = """SELECT 1 FROM leilao
+        WHERE vendedor_utilizador_idutilizador=%s, idleilao=%s"""
+    values = (userId,leilaoId,)
+    cur.execute(statement,values)
+    row = cur.fetchone()
+    if not row:
+        print("[DB] O utilizador não é vendedor do leilão ID:%s.") %leilaoId
+        return jsonify({"erro": 500}) #A DEFINIR
 
     #Copiar o leilão atual e termina-o
     try:
@@ -471,7 +486,6 @@ def edit_leilao(leilaoId):
         cur.execute(statement, values)
         statement = """UPDATE leilao SET terminou='true' WHERE idleilao = %s"""
         cur.execute(statement, values)
-
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
         print("[Erro] A encontrar ou copiar leilão id:%s." % leilaoId)
@@ -519,9 +533,6 @@ def edit_leilao(leilaoId):
     if "precoMinimo" in payload:
         statement += "precominimo = %s,"
         values += (payload["precoMinimo"],)
-    if "artigoId" in payload:
-        statement += "artigo_idartigo = %s,"
-        values += (payload["artigoId"],)
     statement = statement[:-1]
     statement += " WHERE idleilao=%s"
     values += (novoLeilaoId,)
@@ -699,6 +710,17 @@ def end_leilao(leilaoId):
     db = db_connection()
     cur = db.cursor()
     output = {}
+
+    #Verifica se o utilizador é o vendedor do leilão
+    statement = """SELECT 1 FROM leilao
+        WHERE vendedor_utilizador_idutilizador=%s, idleilao=%s"""
+    values = (userId,leilaoId,)
+    cur.execute(statement,values)
+    row = cur.fetchone()
+    if not row:
+        print("[DB] O utilizador não é vendedor do leilão ID:%s.") %leilaoId
+        return jsonify({"erro": 500}) #A DEFINIR
+
     #Seleciona o bool "terminou" para atualizar, bloqueando a linha
     try:
         statement = "UPDATE leilao SET terminou='true' WHERE idleilao=%s"
