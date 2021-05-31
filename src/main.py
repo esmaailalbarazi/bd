@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 ## Conexão à base de dados, devolve a ligação a ser usada
 def db_connection():
-    db = psycopg2.connect(user = "postgres", password ="postgres",
+    db = psycopg2.connect(user = "postgres", password ="pass12345",
             host="127.0.0.1", port="5432", database="dbproj")
     return db
 
@@ -51,7 +51,7 @@ def user_register():
 
     #Insere o novo utilizador com encriptação da palavra-passe
     try:
-        payload["password"] = sha256_crypt.hash(payload["password"])
+       # payload["password"] = sha256_crypt.hash(payload["password"])
         values = (payload["username"], payload["password"], payload["email"])
         statement = """INSERT INTO utilizador (username, password, email)
             VALUES (%s, %s, %s);"""
@@ -61,7 +61,7 @@ def user_register():
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
         print("[Erro] A registar utilizador %s."%payload["username"])
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 333}
         return jsonify(output)
 
     #Seleciona o id do novo utilizador, gerado pelo postgreSQL
@@ -71,7 +71,7 @@ def user_register():
     row = cur.fetchone()
     if not row:
         print("[Erro] Utilizador registado mas impossível de encontrar.")
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 111}
     else:
         output = {'userId': row[0]}
 
@@ -99,12 +99,12 @@ def user_login():
         print("[Erro] Utilizador inexistente")
         if db is not None:
             db.close()
-        return jsonify({'erro': "AuthError"} ) #A DEFINIR
-    elif not sha256_crypt.verify(payload["password"], row[0]):
+        return jsonify({'erro': "AuthError"} )
+    #elif not sha256_crypt.verify(payload["password"], row[0]):     //PASSWORD ENCRIPTADA
         print("[Erro] Palavra-passe incorreta.")
         if db is not None:
             db.close()
-        return jsonify({'erro': "AuthError"}) #A DEFINIR
+        return jsonify({'erro': "AuthError"})
 
     #Gera um novo token de autenticação
     try:
@@ -118,7 +118,7 @@ def user_login():
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
         print("[DB] Erro a autenticar utilizador.")
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 222}
 
     if db is not None:
         db.close()
@@ -138,7 +138,7 @@ def new_leilao():
         print("[DB] O utilizador não está autenticado.")
         if db is not None:
             db.close()
-        return jsonify({'erro': 500}) #A DEFINIR
+        return jsonify({'erro': 444})
 
     #Retorna erro se o artigo a por em venda não existe
     values = (payload["artigoId"],)
@@ -149,10 +149,10 @@ def new_leilao():
         print("[DB] O artigo não existe.")
         if db is not None:
             db.close()
-        return jsonify({'erro': 500}) #A DEFINIR
+        return jsonify({'erro': 111})
 
     #Verifica se o utilizador já é vendedor
-    values = (payload["artigoId"],)
+    values = (userId,)
     statement = """SELECT utilizador_idutilizador FROM vendedor
     WHERE utilizador_idutilizador=%s"""
     cur.execute(statement, values)
@@ -162,7 +162,7 @@ def new_leilao():
     if not row:
         try:
             values = (userId,)
-            statement= """INSERT INTO vendedor(utilizador_idutilizador)
+            statement= """INSERT INTO vendedor (utilizador_idutilizador)
             VALUES (%s)"""
             cur.execute(statement, values)
             cur.execute("commit")
@@ -171,7 +171,7 @@ def new_leilao():
             print(error)
             print("[Erro] Impossível definir utilizador (id: %s) como vendedor."
                 % userId)
-            output = {'erro': 500} #A DEFINIR
+            output = {'erro': 333}
 
     #Cria o registo na tabela leilao
     try:
@@ -188,7 +188,7 @@ def new_leilao():
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
         print("[Erro] A inserir leilão %s." % payload["titulo"])
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 333}
         if db is not None:
             db.close()
         return jsonify(output)
@@ -200,7 +200,7 @@ def new_leilao():
     row = cur.fetchone()
     if not row:
         print("[Erro] Leilão inserido mas impossível de encontrar.")
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 111}
     else:
         output = {'leilaoId': row[0]}
 
@@ -270,7 +270,7 @@ def get_leilao(leilaoId):
         print("[DB] Nenhum leilão existente com o id recebido.")
         if db is not None:
             db.close()
-        return jsonify({"erro": 500}) #a definir
+        return jsonify({"erro": 111})
     output = {"leilaoId": row[0], "titulo": row[1], "descricao": row[2],
         "dataLimite": row[3], "precoMinimo": row[4], "precoAtual": row[5],
         "terminou": row[6]}
@@ -313,7 +313,7 @@ def get_leilao(leilaoId):
     rows = cur.fetchall()
     for row in rows:
         licitacoes.append({"data": row[0], "compradorId": row[1],
-        "valor": row[2] + "€"})
+        "valor": row[2]})
     output["licitacoes"] = licitacoes
 
     if db is not None:
@@ -358,7 +358,7 @@ def create_licitacao(leilaoId):
     userId = check_authtoken(payload["authToken"])
     if not userId:
         print("[DB] O utilizador não está autenticado.")
-        return jsonify({"erro": 500}) #A DEFINIR
+        return jsonify({"erro": 444})
 
     db = db_connection()
     cur = db.cursor()
@@ -373,7 +373,7 @@ def create_licitacao(leilaoId):
         print("[Erro] Não existe nenhum leilão com o ID %s." %leilaoId)
         if db is not None:
             db.close()
-        return jsonify({"erro": 500}) #A DEFINIR
+        return jsonify({"erro": 111})
     precoAtual = row[0]
 
     #Verifica que a licitação é mais alta do que o preço atual
@@ -381,7 +381,7 @@ def create_licitacao(leilaoId):
         print("[Erro] O valor da licitação deve ser maior que o preço atual.")
         if db is not None:
             db.close()
-        return jsonify({"erro": 500}) #A DEFINIR
+        return jsonify({"erro": 111})
 
     #Verifica se o utilizador já é comprador
     values = (userId,)
@@ -404,7 +404,7 @@ def create_licitacao(leilaoId):
                 % userId)
             if db is not None:
                 db.close()
-            return jsonify({'erro': 500}) #A DEFINIR
+            return jsonify({'erro': 333})
 
     #Registar nova licitação e atualizar o preço atual
     try:
@@ -422,7 +422,7 @@ def create_licitacao(leilaoId):
         print("[Erro] Impossível criar licitação.")
         if db is not None:
             db.close()
-        return jsonify({'erro': 500})#A DEFINIR
+        return jsonify({'erro': 333})
 
     #Procurar o id da nova licitação e da última para notificar
     statement = """SELECT idlicitacao, comprador_utilizador_idutilizador
@@ -475,7 +475,7 @@ def edit_leilao(leilaoId):
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
         print("[Erro] A encontrar ou copiar leilão id:%s." % leilaoId)
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 333}
         if db is not None:
             db.close()
         return jsonify(output)
@@ -499,7 +499,7 @@ def edit_leilao(leilaoId):
         print(error)
         print("""[Erro] A copiar licitações e mensagens para o novo leilão
             id:%s.""" % novoLeilaoId)
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 222}
         if db is not None:
             db.close()
         return jsonify(output)
@@ -533,7 +533,7 @@ def edit_leilao(leilaoId):
         print(error)
         print("""[Erro] A copiar licitações e mensagens para o novo leilão
             id:%s.""" % novoLeilaoId)
-        output = {'erro': 500} #A DEFINIR
+        output = {'erro': 222}
         if db is not None:
             db.close()
         return jsonify(output)
@@ -557,7 +557,7 @@ def create_mensagem(leilaoId):
     userId = check_authtoken(payload["authToken"])
     if not userId:
         print("[DB] O utilizador não está autenticado.")
-        return jsonify({"erro": 500}) #A DEFINIR
+        return jsonify({"erro": 444})
 
     db = db_connection()
     cur = db.cursor()
@@ -570,7 +570,7 @@ def create_mensagem(leilaoId):
     row = cur.fetchone()
     if not row:
         print("[DB] Não existe nenhum leilão com o ID %s." %leilaoId)
-        return jsonify({"erro": 500}) #A DEFINIR
+        return jsonify({"erro": 111})
     vendedorId = (row[0],)
 
     #Procura quem já escreveu mensagens acerca do leilão (para notificar)
@@ -594,7 +594,7 @@ def create_mensagem(leilaoId):
         print("[Erro] A criar nova mensagem.")
         if db is not None:
             db.close()
-        return jsonify({"erro": 500}) #A DEFINIR
+        return jsonify({"erro": 333})
 
     #Retira o ID da nova mensagem (mensagemId, username, leilao)
     statement = """SELECT idmensagem FROM mensagem
@@ -648,7 +648,7 @@ def list_notificacoes():
     userId = check_authtoken(payload["authToken"])
     if not userId:
         print("[DB] O utilizador não está autenticado.")
-        return jsonify({"erro": 500}) #A DEFINIR
+        return jsonify({"erro": 444})
 
     db = db_connection()
     cur = db.cursor()
