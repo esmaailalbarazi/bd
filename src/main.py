@@ -343,5 +343,200 @@ def get_atividade(userId):
     return jsonify(output)
 
 
+## GET /dbproj/licitar/<leilaoId>/<licitacao> - Criar uma licitação num
+## determinado leilão
+@app.route("/dbproj/licitar/<leilaoId>/<licitacao>", methods=["GET"])
+def create_licitacao(leilaoId, licitacao):
+    return jsonify({})
+
+
+## PUT /dbproj/leilao/<leilaoId> - Editar um leilão existente, guardando as
+## versões anteriores
+@app.route("/dbproj/leilao/<leilaoId>", methods=["PUT"])
+def edit_leilao(leilaoId):
+    payload = request.get_json()
+    db = db_connection()
+    cur = db.cursor()
+
+    #Copiar o leilão atual e termina-o
+    try:
+        values = (leilaoId,)
+        statement = """INSERT into leilao (titulo, descricao, datalimite,
+            precominimo, precoatual, vendedor_utilizador_idutilizador,
+            artigo_idartigo, terminou)
+            SELECT titulo, descricao, datalimite, precominimo, precoatual,
+            vendedor_utilizador_idutilizador, artigo_idartigo, terminou
+            FROM leilao WHERE idleilao = %s"""
+        cur.execute(statement, values)
+        statement = """UPDATE leilao SET terminou='true' WHERE idleilao = %s"""
+        cur.execute(statement, values)
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+        print("[Erro] A encontrar ou copiar leilão id:%s." % leilaoId)
+        output = {'erro': 500} #A DEFINIR
+        if db is not None:
+            db.close()
+        return jsonify(output)
+
+    #Encontra o id do novo leilão
+    statement = "SELECT idleilao FROM leilao ORDER BY idleilao DESC LIMIT 1"
+    cur.execute(statement)
+    novoLeilaoId = cur.fetchone()
+
+    #Passa as mensagens e licitações do antigo para o novo
+    try:
+        values = (novoLeilaoId, leilaoId,)
+        statement = """UPDATE licitacao SET leilao_idleilao=%s
+            WHERE leilao_idleilao = %s"""
+        cur.execute(statement, values)
+        statement = """UPDATE mensagem SET leilao_idleilao=%s
+            WHERE leilao_idleilao = %s"""
+        cur.execute(statement, values)
+        print("[DB] Foi feita uma cópia do leilão antigo.")
+        cur.execute("commit")
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+        print("""[Erro] A copiar licitações e mensagens para o novo leilão
+            id:%s.""" % novoLeilaoId)
+        output = {'erro': 500} #A DEFINIR
+        if db is not None:
+            db.close()
+        return jsonify(output)
+
+    #Atualiza os dados para os recebidos
+    statement = "UPDATE leilao SET "
+    values = ()
+    if "titulo" in payload:
+        statement += "titulo = %s"
+        values += (payload["titulo"],)
+    if "descricao" in payload:
+        statement += "descricao = %s"
+        values += (payload["descricao"],)
+    if "dataLimite" in payload:
+        statement += "datalimite = %s"
+        values += (payload["dataLimite"],)
+    if "precoMinimo" in payload:
+        statement += "precominimo = %s"
+        values += (payload["precoMinimo"],)
+    if "artigoId" in payload:
+        statement += "artigo_idartigo = %s"
+        values += (payload["artigoId"],)
+    statement += "WHERE idleilao=%s"
+    values += (novoLeilaoId,)
+    try:
+        cur.execute(statement, values)
+        cur.execute("commit")
+        print("[DB] O novo leilão foi atualizado")
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+        print("""[Erro] A copiar licitações e mensagens para o novo leilão
+            id:%s.""" % novoLeilaoId)
+        output = {'erro': 500} #A DEFINIR
+        if db is not None:
+            db.close()
+        return jsonify(output)
+
+    #Devolve o novo leilão atualizado
+    statement = "SELECT idleilao, titulo, descricao  FROM leilao WHERE idleilao=%s"
+    values = (novoLeilaoId,)
+    cur.execute(statement, values)
+    row = cur.fetchone()
+    output = {"leilaoId": row[0], "titulo": row[1], "descricao": row[2]}
+    return jsonify(output)
+
+
+## POST /dbproj/leilao - Cria uma mensagem associada a um leilão
+## e notifica o vendedor e toda a gente que já mandou mensagens
+@app.route("/dbproj/leilao/<leilaoId>/mensagem", methods=["POST"])
+def create_mensagem(leilaoId):
+
+    payload = request.get_json()
+    #Verifica se o utilizador está autenticado
+    userId = check_authtoken(payload["authToken"])
+    if not userId:
+        print("[DB] O utilizador não está autenticado.")
+        return jsonify({"erro": 500}) #A DEFINIR
+
+    db = db_connection()
+    cur = db.cursor()
+
+    #Verificar se o leilão existe
+    statement = """SELECT vendedor_utilizador_idutilizador FROM leilao
+        WHERE idleilao=%s"""
+    values = (leilaoId,)
+    cur.execute(statement, values)
+    row = cur.fetchone()
+    if not row:
+        print("[DB] Não existe nenhum leilão com o ID %s." %leilaoId)
+        return jsonify({"erro": 500}) #A DEFINIR
+    vendedorId = (row[0],)
+
+    #Procura quem já escreveu mensagens acerca do leilão (para notificar)
+    statement = """SELECT DISTINCT utilizador_idutilizador FROM mensagem
+        WHERE leilao_idleilao=%s"""
+    values = (leilaoId,)
+    cur.execute(statement, values)
+    participantes = cur.fetchall()
+    print(participantes)
+
+    #Registar a mensagem no leilão
+    try:
+        statement = """INSERT INTO mensagem
+            (conteudo, utilizador_idutilizador, leilao_idleilao, data)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)"""
+        values = (payload["mensagem"], userId, leilaoId,)
+        cur.execute(statement, values)
+        print("[DB] Mensagem criada com sucesso.")
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+        print("[Erro] A criar nova mensagem.")
+        if db is not None:
+            db.close()
+        return jsonify({"erro": 500}) #A DEFINIR
+
+    #Retira o ID da nova mensagem (mensagemId, username, leilao)
+    statement = """SELECT idmensagem FROM mensagem
+        ORDER BY idmensagem DESC LIMIT 1"""
+    cur.execute(statement)
+    row = cur.fetchone()
+    cur.execute("commit")
+    mensagemId = row[0]
+    statement = "SELECT username FROM utilizador WHERE idutilizador=%s"
+    values = (userId,)
+    cur.execute(statement, values)
+    row = cur.fetchone()
+    username = row[0]
+    statement = "SELECT titulo, descricao FROM leilao WHERE idleilao=%s"
+    values = (leilaoId,)
+    cur.execute(statement, values)
+    row = cur.fetchone()
+    leilao = row[0] + " - " + row[1]
+
+    #Notifica os participantes
+    if vendedorId not in participantes: #CORRIGIR
+        participantes.append(vendedorId)
+    notificacao = "O utilizador " + username + \
+        " escreveu uma mensagem no leilão " + leilao + "."
+    try:
+        for row in participantes:
+            statement = """INSERT INTO notificacao
+                (texto, data, utilizador_idutilizador)
+                VALUES (%s, CURRENT_TIMESTAMP, %s)"""
+            values = (notificacao, row[0],)
+            cur.execute(statement, values)
+            statement = """INSERT INTO notificacaomensagem
+                (mensagem_idmensagem, notificacao_utilizador_idutilizador)
+                VALUES (%s, %s)"""
+            values = (mensagemId, row[0],)
+            cur.execute("commit")
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("[Erro] A notificar utilizadores da nova mensagem.")
+
+    if db is not None:
+        db.close()
+    return jsonify({"mensagemId": mensagemId})
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port="8080", debug=True, threaded=True)

@@ -24,13 +24,14 @@ CREATE TABLE leilao (
 	datalimite			 TIMESTAMP NOT NULL,
 	precominimo			 FLOAT(8) NOT NULL,
 	precoatual			 FLOAT(8) NOT NULL,
+	terminou			 BOOL NOT NULL DEFAULT false,
 	vendedor_utilizador_idutilizador BIGINT NOT NULL,
 	artigo_idartigo			 BIGINT NOT NULL,
 	PRIMARY KEY(idleilao)
 );
 
 CREATE TABLE artigo (
-	idartigo SERIAL UNIQUE,
+	idartigo SERIAL,
 	PRIMARY KEY(idartigo)
 );
 
@@ -59,28 +60,26 @@ CREATE TABLE artigoisbn (
 CREATE TABLE mensagem (
 	idmensagem		 SERIAL,
 	conteudo		 TEXT NOT NULL,
+	data			 TIMESTAMP,
 	utilizador_idutilizador BIGINT NOT NULL,
 	leilao_idleilao	 BIGINT NOT NULL,
 	PRIMARY KEY(idmensagem)
 );
 
-CREATE TABLE notificacao (
+CREATE TABLE notificacaolicitacao (
 	texto			 TEXT,
 	data			 TIMESTAMP NOT NULL,
+	licitacao_idlicitacao	 BIGINT,
 	utilizador_idutilizador BIGINT,
-	PRIMARY KEY(utilizador_idutilizador)
-);
-
-CREATE TABLE notificacaolicitacao (
-	licitacao_idlicitacao		 BIGINT,
-	notificacao_utilizador_idutilizador BIGINT,
-	PRIMARY KEY(notificacao_utilizador_idutilizador)
+	PRIMARY KEY(licitacao_idlicitacao,utilizador_idutilizador)
 );
 
 CREATE TABLE notificacaomensagem (
-	mensagem_idmensagem		 BIGINT,
-	notificacao_utilizador_idutilizador BIGINT,
-	PRIMARY KEY(notificacao_utilizador_idutilizador)
+	texto			 TEXT,
+	data			 TIMESTAMP NOT NULL,
+	mensagem_idmensagem	 BIGINT,
+	utilizador_idutilizador BIGINT,
+	PRIMARY KEY(mensagem_idmensagem,utilizador_idutilizador)
 );
 
 ALTER TABLE vendedor ADD CONSTRAINT vendedor_fk1 FOREIGN KEY (utilizador_idutilizador) REFERENCES utilizador(idutilizador);
@@ -93,9 +92,7 @@ ALTER TABLE artigoean ADD CONSTRAINT artigoean_fk1 FOREIGN KEY (artigo_idartigo)
 ALTER TABLE artigoisbn ADD CONSTRAINT artigoisbn_fk1 FOREIGN KEY (artigo_idartigo) REFERENCES artigo(idartigo);
 ALTER TABLE mensagem ADD CONSTRAINT mensagem_fk1 FOREIGN KEY (utilizador_idutilizador) REFERENCES utilizador(idutilizador);
 ALTER TABLE mensagem ADD CONSTRAINT mensagem_fk2 FOREIGN KEY (leilao_idleilao) REFERENCES leilao(idleilao);
-ALTER TABLE notificacao ADD CONSTRAINT notificacao_fk1 FOREIGN KEY (utilizador_idutilizador) REFERENCES utilizador(idutilizador);
 ALTER TABLE notificacaolicitacao ADD CONSTRAINT notificacaolicitacao_fk1 FOREIGN KEY (licitacao_idlicitacao) REFERENCES licitacao(idlicitacao);
-ALTER TABLE notificacaolicitacao ADD CONSTRAINT notificacaolicitacao_fk2 FOREIGN KEY (notificacao_utilizador_idutilizador) REFERENCES notificacao(utilizador_idutilizador);
+ALTER TABLE notificacaolicitacao ADD CONSTRAINT notificacaolicitacao_fk2 FOREIGN KEY (utilizador_idutilizador) REFERENCES utilizador(idutilizador);
 ALTER TABLE notificacaomensagem ADD CONSTRAINT notificacaomensagem_fk1 FOREIGN KEY (mensagem_idmensagem) REFERENCES mensagem(idmensagem);
-ALTER TABLE notificacaomensagem ADD CONSTRAINT notificacaomensagem_fk2 FOREIGN KEY (notificacao_utilizador_idutilizador) REFERENCES notificacao(utilizador_idutilizador);
-
+ALTER TABLE notificacaomensagem ADD CONSTRAINT notificacaomensagem_fk2 FOREIGN KEY (utilizador_idutilizador) REFERENCES utilizador(idutilizador);

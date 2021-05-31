@@ -1,10 +1,11 @@
 mudanças da 1a meta:
 Primary keys -> uso do tipo SERIAL para autoincremento pelo postgresql, deixando as tabelas intermedias com bigint na mesma
 criamos os 2 tipos de notif, para ficar sempre uma licitação OU uma mensagem associada à notif
-criamos um campo milisegundos
+criamos um campo milisegundos -> não é preciso porque o timestamp tem
 alargamos o campo password de utilizadores por causa da hash longa (+/- 80 chars em vez de 64)
 removemos entidades fracas de licitações ou mensagens, visto que as mensagens devem ser identificadas por elas próprias, não pelo leilão ou pelo utilizador (o mesmo utilizador pode ter várias mensagens no mesmo leilão
 alteramos os campos de Date para Timestamp (para incluir data + hora)
+adicionamos um booleano para indicar se o leilão terminou (para o metodo pedido e no caso de editar leilões)
 
 desenvolvimento:
 REGISTOS INICIAIS -> inseridos com o sql ao gerir a bd inicial (por fazer)
@@ -13,12 +14,15 @@ API REST -> uso da framework flask do python, para responder aos requests tal ta
 REQUESTS -> enviados por curl, mostrar os comandos etc...
 DEFAULT VALUES -> para definir valores em tabelas como 'artigo' em que existe apenas um campo SERIAL a ser definido automaticamente e, por isso, não há nenhum valor arbitrário a ser escolhido.
 
-todo:
+to-do:
 codigo de erros de requests http ou da base de dados, não sei o que prof quer aí
 usar o psycopg2.error para obter os codigos de erros da bd!
-tirar autocommit da bd
+tirar autocommit da bd e mostrar como
 logger -> usado para ter um log de todos os requests feitos
 checks no SQL para limitar o ISBN a > 10, licitações novas > preço atual..
+talvez evitar alterar o preço atual
+
+evitou-se usar %s e concatenação de strings das queries sql
 
 ações:
 	adicionar leilão:
@@ -38,3 +42,15 @@ ações:
 	- procurar o id do utilizador nas licitações, e devolver os ids do leilões de forma distinta
 	- procurar o id do utilizador nos leilões como vendedor e unir de forma distinta com os resultados de licitações
 	- devolve um array de objetos [{"idLeilao": "id", "descricao": "conteudo"}, ...]
+
+	editar leilão anterior:
+	- estrutura do json: { "titulo": "novoTitulo", "descricao": "novaDescricao", "dataLimite": "novaDataLimite" }
+	- copiar dados do leilão anterior
+	- terminar o leilão anterior
+	- criar um novo leilão com os dados atualizados
+	- passar as mensagens e licitações para o novo id do leilão
+	- devolve o id do novo leilão e a informação completa
+
+	escrever mensagem:
+	-endpoint - POST /dbproj/leilao/<leilaoId>/mensagem
+	-json - {"authToken": "authtoken", "mensagem": "conteudo"}
